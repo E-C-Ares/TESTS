@@ -1,0 +1,40 @@
+name: 每日日报抓取并邮件推送
+on:
+  schedule:
+    # UTC 04:00 = 北京时间中午12点
+    - cron: '0 4 * * *'
+  workflow_dispatch: # 支持手动点按钮测试
+
+jobs:
+  crawl-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run crawler
+        env:
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_USER: ${{ secrets.MAIL_USER }}
+          MAIL_PASS: ${{ secrets.MAIL_PASS }}
+        run: python scrape.py
+
+      - name: Send mail via Outlook SMTP
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp-mail.outlook.com
+          server_port: 587
+          secure: false # outlook用STARTTLS，不是SSL
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASS }}
+          to: ${{ secrets.MAIL_TO }}
+          from: DailyBot <${{ secrets.MAIL_USER }}>
+          subject: AI日报 - ${{ github.run_date }}
+          html_body: file://mail.html
